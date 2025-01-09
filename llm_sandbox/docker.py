@@ -188,9 +188,7 @@ class SandboxDockerSession(Session):
             )
 
         with tempfile.TemporaryDirectory() as directory_name:
-            code_file = os.path.join(
-                directory_name, f"code.{get_code_file_extension(self.lang)}"
-            )
+            code_file = os.path.join(directory_name, f"code.{get_code_file_extension(self.lang)}")
             
             if self.lang == SupportedLanguage.GO:
                 code_dest_file = "/go_space/code.go"
@@ -203,6 +201,7 @@ class SandboxDockerSession(Session):
                 f.write(code)
 
             self.copy_to_runtime(code_file, code_dest_file)
+            self.copy_to_runtime('memory_profiler.sh', '/tmp/memory_profiler.sh')
 
             output = ConsoleOutput()
             commands = get_code_execution_command(self.lang, code_dest_file)
@@ -211,6 +210,9 @@ class SandboxDockerSession(Session):
                     output = self.execute_command(command, workdir="/go_space")
                 else:
                     output = self.execute_command(command)
+                    if self.verbose:
+                        print(output.stdout)
+                        print(output.stderr)
 
             return output
 

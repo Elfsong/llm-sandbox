@@ -14,7 +14,7 @@ class SandboxSession:
         dockerfile: Optional[str] = None,
         lang: str = SupportedLanguage.PYTHON,
         keep_template: bool = False,
-        commit_container: bool = True,
+        commit_container: bool = False,
         verbose: bool = False,
         use_kubernetes: bool = False,
         kube_namespace: Optional[str] = "default",
