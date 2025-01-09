@@ -3,16 +3,20 @@ from typing import Optional, List
 
 
 class ConsoleOutput:
-    def __init__(self, text: str):
-        self._text = text
+    def __init__(self, stdout=None, stderr=None):
+        self._stdout = stdout
+        self._stderr = stderr
 
     @property
-    def text(self):
-        return self._text
+    def stdout(self):
+        return self._stdout
+
+    @property
+    def stderr(self):
+        return self._stderr
 
     def __str__(self):
-        return f"ConsoleOutput(text={self.text})"
-
+        return f"stdout: {self.stdout} \nstderr: {self.stderr}"
 
 class KubernetesConsoleOutput(ConsoleOutput):
     def __init__(self, exit_code: int, text: str):

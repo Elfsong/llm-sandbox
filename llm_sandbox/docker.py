@@ -122,6 +122,8 @@ class SandboxDockerSession(Session):
             mounts=self.mounts,
             **self.container_configs if self.container_configs else {},
         )
+        
+        self.setup()
 
     def close(self):
         if self.container:
@@ -156,11 +158,9 @@ class SandboxDockerSession(Session):
                         f"Image {self.image.tags[-1]} is in use by other containers. Skipping removal.."
                     )
 
-    def run(self, code: str, libraries: Optional[List] = None) -> ConsoleOutput:
-        if not self.container:
-            raise RuntimeError(
-                "Session is not open. Please call open() method before running code."
-            )
+    def setup(self, libraries: Optional[List] = None):
+        self.execute_command('apt update')
+        self.execute_command('apt install time')
 
         if libraries:
             if self.lang.upper() in NotSupportedLibraryInstallation:
@@ -169,23 +169,31 @@ class SandboxDockerSession(Session):
                 )
 
             if self.lang == SupportedLanguage.GO:
-                self.execute_command("mkdir -p /example")
-                self.execute_command("go mod init example", workdir="/example")
-                self.execute_command("go mod tidy", workdir="/example")
+                self.execute_command("mkdir -p /go_space")
+                self.execute_command("go mod init go_space", workdir="/go_space")
+                self.execute_command("go mod tidy", workdir="/go_space")
 
                 for library in libraries:
                     command = get_libraries_installation_command(self.lang, library)
-                    _ = self.execute_command(command, workdir="/example")
+                    _ = self.execute_command(command, workdir="/go_space")
             else:
                 for library in libraries:
                     command = get_libraries_installation_command(self.lang, library)
                     _ = self.execute_command(command)
+
+    def run(self, code: str) -> ConsoleOutput:
+        if not self.container:
+            raise RuntimeError(
+                "Session is not open. Please call open() method before running code."
+            )
+
         with tempfile.TemporaryDirectory() as directory_name:
             code_file = os.path.join(
                 directory_name, f"code.{get_code_file_extension(self.lang)}"
             )
+            
             if self.lang == SupportedLanguage.GO:
-                code_dest_file = "/example/code.go"
+                code_dest_file = "/go_space/code.go"
             else:
                 code_dest_file = (
                     f"/tmp/code.{get_code_file_extension(self.lang)}"  # code_file
@@ -196,11 +204,11 @@ class SandboxDockerSession(Session):
 
             self.copy_to_runtime(code_file, code_dest_file)
 
-            output = ConsoleOutput("")
+            output = ConsoleOutput()
             commands = get_code_execution_command(self.lang, code_dest_file)
             for command in commands:
                 if self.lang == SupportedLanguage.GO:
-                    output = self.execute_command(command, workdir="/example")
+                    output = self.execute_command(command, workdir="/go_space")
                 else:
                     output = self.execute_command(command)
 
@@ -247,9 +255,7 @@ class SandboxDockerSession(Session):
         tarstream.seek(0)
         self.container.put_archive(os.path.dirname(dest), tarstream)
 
-    def execute_command(
-        self, command: Optional[str], workdir: Optional[str] = None
-    ) -> ConsoleOutput:
+    def execute_command(self, command: Optional[str], workdir: Optional[str] = None) -> ConsoleOutput:
         if not command:
             raise ValueError("Command cannot be empty")
 
@@ -262,22 +268,15 @@ class SandboxDockerSession(Session):
             print(f"Executing command: {command}")
 
         if workdir:
-            exit_code, exec_log = self.container.exec_run(
-                command, stream=True, tty=True, workdir=workdir
-            )
+            exit_code, exec_log = self.container.exec_run(command, stream=False, tty=False, workdir=workdir, demux=True)
         else:
-            exit_code, exec_log = self.container.exec_run(
-                command, stream=True, tty=True
-            )
+            exit_code, exec_log = self.container.exec_run(command, stream=False, tty=False, demux=True)
 
-        output = ""
+        stdout = exec_log[0].decode("utf-8") if exec_log[0] else None
+        stderr = exec_log[1].decode("utf-8") if exec_log[1] else None
+
         if self.verbose:
-            print("Output:", end=" ")
+            print(f"stdout:\n{stdout}")
+            print(f"stderr:\n{stderr}")
 
-        for chunk in exec_log:
-            chunk_str = chunk.decode("utf-8")
-            output += chunk_str
-            if self.verbose:
-                print(chunk_str, end="")
-
-        return ConsoleOutput(output)
+        return ConsoleOutput(stdout, stderr)
