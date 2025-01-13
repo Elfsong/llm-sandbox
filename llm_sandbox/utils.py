@@ -82,7 +82,7 @@ def get_code_execution_command(lang: str, code_file: str) -> list:
     elif lang == SupportedLanguage.JAVASCRIPT:
         return [f"/tmp/memory_profiler.sh node {code_file}"]
     elif lang == SupportedLanguage.CPP:
-        return [f"g++ -o a.out {code_file}", "/tmp/memory_profiler.sh a.out"]
+        return [f"g++ -o a.out {code_file}", "/tmp/memory_profiler.sh ./a.out"]
     elif lang == SupportedLanguage.GO:
         return [f"/tmp/memory_profiler.sh go run {code_file}"]
     elif lang == SupportedLanguage.RUBY:

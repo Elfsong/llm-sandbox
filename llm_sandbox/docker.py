@@ -181,7 +181,7 @@ class SandboxDockerSession(Session):
                     command = get_libraries_installation_command(self.lang, library)
                     _ = self.execute_command(command)
 
-    def run(self, code: str) -> ConsoleOutput:
+    def run(self, code: str, *args, **kwargs) -> ConsoleOutput:
         if not self.container:
             raise RuntimeError(
                 "Session is not open. Please call open() method before running code."
@@ -213,7 +213,10 @@ class SandboxDockerSession(Session):
                     if self.verbose:
                         print(output.stdout)
                         print(output.stderr)
-
+            if self.lang == SupportedLanguage.GO:
+                self.copy_from_runtime('/go_space/mem_usage.log', 'mem_usage.log')
+            else:
+                self.copy_from_runtime('mem_usage.log', 'mem_usage.log')
             return output
 
     def copy_from_runtime(self, src: str, dest: str):
