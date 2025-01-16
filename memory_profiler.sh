@@ -9,8 +9,8 @@ fi
 # Save commands as an array
 CMD=("$@")
 
+# Set log name
 LOG_FILE="mem_usage.log"
-echo "timestamp_ns RSS_kB" > "$LOG_FILE"
 
 # Get PID
 "${CMD[@]}" &
@@ -30,5 +30,3 @@ done
 
 # 5. Wait PID finish
 wait $PID 2>/dev/null
-
-echo "[+] Process $PID has finished. Memory usage log is in $LOG_FILE."

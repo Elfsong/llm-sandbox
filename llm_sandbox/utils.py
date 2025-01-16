@@ -68,27 +68,43 @@ def get_code_file_extension(lang: str) -> str:
         raise ValueError(f"Language {lang} is not supported")
 
 
-def get_code_execution_command(lang: str, code_file: str) -> list:
+def get_code_execution_command(lang: str, code_file: str, run_memory_profile: bool) -> list:
     """
     Return the execution command for the given language and code file.
     :param lang: Language of the code
     :param code_file: Path to the code file
     :return: List of execution commands
     """
-    if lang == SupportedLanguage.PYTHON:
-        return [f"/tmp/memory_profiler.sh python {code_file}"]
-    elif lang == SupportedLanguage.JAVA:
-        return [f"/tmp/memory_profiler.sh java {code_file}"]
-    elif lang == SupportedLanguage.JAVASCRIPT:
-        return [f"/tmp/memory_profiler.sh node {code_file}"]
-    elif lang == SupportedLanguage.CPP:
-        return [f"g++ -o a.out {code_file}", "/tmp/memory_profiler.sh ./a.out"]
-    elif lang == SupportedLanguage.GO:
-        return [f"/tmp/memory_profiler.sh go run {code_file}"]
-    elif lang == SupportedLanguage.RUBY:
-        return [f"ruby {code_file}"]
+    if run_memory_profile:
+        if lang == SupportedLanguage.PYTHON:
+            return [f"/tmp/memory_profiler.sh python {code_file}"]
+        elif lang == SupportedLanguage.JAVA:
+            return [f"/tmp/memory_profiler.sh java {code_file}"]
+        elif lang == SupportedLanguage.JAVASCRIPT:
+            return [f"/tmp/memory_profiler.sh node {code_file}"]
+        elif lang == SupportedLanguage.CPP:
+            return [f"g++ -o a.out {code_file}", "/tmp/memory_profiler.sh ./a.out"]
+        elif lang == SupportedLanguage.GO:
+            return [f"/tmp/memory_profiler.sh go run {code_file}"]
+        elif lang == SupportedLanguage.RUBY:
+            return [f"ruby {code_file}"]
+        else:
+            raise ValueError(f"Language {lang} is not supported")
     else:
-        raise ValueError(f"Language {lang} is not supported")
+        if lang == SupportedLanguage.PYTHON:
+            return [f"python {code_file}"]
+        elif lang == SupportedLanguage.JAVA:
+            return [f"java {code_file}"]
+        elif lang == SupportedLanguage.JAVASCRIPT:
+            return [f"node {code_file}"]
+        elif lang == SupportedLanguage.CPP:
+            return [f"g++ -o a.out {code_file}", "./a.out"]
+        elif lang == SupportedLanguage.GO:
+            return [f"go run {code_file}"]
+        elif lang == SupportedLanguage.RUBY:
+            return [f"ruby {code_file}"]
+        else:
+            raise ValueError(f"Language {lang} is not supported")
     
 
 

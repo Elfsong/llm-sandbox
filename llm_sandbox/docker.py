@@ -181,7 +181,7 @@ class SandboxDockerSession(Session):
                     command = get_libraries_installation_command(self.lang, library)
                     _ = self.execute_command(command)
 
-    def run(self, code: str, *args, **kwargs) -> ConsoleOutput:
+    def run(self, code: str, run_memory_profile: bool, *args, **kwargs) -> ConsoleOutput:
         if not self.container:
             raise RuntimeError(
                 "Session is not open. Please call open() method before running code."
@@ -201,10 +201,11 @@ class SandboxDockerSession(Session):
                 f.write(code)
 
             self.copy_to_runtime(code_file, code_dest_file)
-            self.copy_to_runtime('memory_profiler.sh', '/tmp/memory_profiler.sh')
+            if run_memory_profile:
+                self.copy_to_runtime('memory_profiler.sh', ('/tmp/memory_profiler.sh'))
 
             output = ConsoleOutput()
-            commands = get_code_execution_command(self.lang, code_dest_file)
+            commands = get_code_execution_command(self.lang, code_dest_file, run_memory_profile=run_memory_profile)
             for command in commands:
                 if self.lang == SupportedLanguage.GO:
                     output = self.execute_command(command, workdir="/go_space")
@@ -213,10 +214,13 @@ class SandboxDockerSession(Session):
                     if self.verbose:
                         print(output.stdout)
                         print(output.stderr)
-            if self.lang == SupportedLanguage.GO:
-                self.copy_from_runtime('/go_space/mem_usage.log', 'mem_usage.log')
-            else:
-                self.copy_from_runtime('mem_usage.log', 'mem_usage.log')
+            
+            if run_memory_profile:
+                if self.lang == SupportedLanguage.GO:
+                    self.copy_from_runtime('/go_space/mem_usage.log', 'mem_usage.log')
+                else:
+                    self.copy_from_runtime('mem_usage.log', 'mem_usage.log')
+                
             return output
 
     def copy_from_runtime(self, src: str, dest: str):
