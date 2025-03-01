@@ -189,6 +189,7 @@ class SandboxDockerSession(Session):
 
         with tempfile.TemporaryDirectory() as directory_name:
             code_file = os.path.join(directory_name, f"code.{get_code_file_extension(self.lang)}")
+            profiler_file = "/home/nus_cisco_wp1/Projects/llm-sandbox/memory_profiler.sh"
             
             if self.lang == SupportedLanguage.GO:
                 code_dest_file = "/go_space/code.go"
@@ -196,17 +197,20 @@ class SandboxDockerSession(Session):
                 code_dest_file = (
                     f"/tmp/code.{get_code_file_extension(self.lang)}"  # code_file
                 )
+            profiler_dest_path = "/tmp/memory_profiler.sh"
 
             with open(code_file, "w") as f:
                 f.write(code)
 
             self.copy_to_runtime(code_file, code_dest_file)
             if run_memory_profile:
-                self.copy_to_runtime('memory_profiler.sh', ('/tmp/memory_profiler.sh'))
+                self.copy_to_runtime(profiler_file, profiler_dest_path)
 
             output = ConsoleOutput()
+            code_compiled= False
             commands = get_code_execution_command(self.lang, code_dest_file, run_memory_profile=run_memory_profile)
-            for command in commands:
+            
+            for index, command in enumerate(commands):
                 if self.lang == SupportedLanguage.GO:
                     output = self.execute_command(command, workdir="/go_space")
                 else:
@@ -214,14 +218,26 @@ class SandboxDockerSession(Session):
                     if self.verbose:
                         print(output.stdout)
                         print(output.stderr)
-            
+                        
+            duration, peak_memory, integral, log = 0, 0, 0, list()
             if run_memory_profile:
+                log_path = os.path.join(directory_name, 'mem_usage.log')
                 if self.lang == SupportedLanguage.GO:
-                    self.copy_from_runtime('/go_space/mem_usage.log', 'mem_usage.log')
+                    self.copy_from_runtime('/go_space/mem_usage.log', log_path)
                 else:
-                    self.copy_from_runtime('mem_usage.log', 'mem_usage.log')
+                    self.copy_from_runtime('mem_usage.log', log_path)
                 
-            return output
+                with open(log_path, "r") as mem_profile:
+                    for line in mem_profile.readlines():
+                        timestamp, mem = line.split(" ")
+                        peak_memory = max(peak_memory, int(mem))
+                        integral += peak_memory
+                        log.append((int(timestamp), int(mem)))
+                    duration = (log[-1][0] - log[0][0]) / 1000000
+                os.remove(log_path)
+                
+                
+            return {"stdout": output.stdout, "stderr": output.stderr, "peak_memory": peak_memory, "integral": integral, "duration": duration, 'log': log}
 
     def copy_from_runtime(self, src: str, dest: str):
         if not self.container:

@@ -13,7 +13,7 @@ from llm_sandbox import SandboxSession
 
 
 st.title("_Monolith_ is :blue[cool] :sunglasses:")
-st.write('*It is a remote runtimes environment for code execution and evaluation. Please feel free to try it out!*')
+st.write('*It is a remote runtimes environment for code execution and evaluation. Please feel free to try [it](http://35.198.229.197:8000/docs#/default/execute_run_get) out!*')
 st.write('*Any questions? Please contact :blue[mingzhe@nus.edu.sg]*')
 
 lang_map = {
@@ -73,34 +73,21 @@ def run_with_timeout(func, timeout, *args, **kwargs):
 
 if response_dict['type'] == 'submit':
     code = response_dict['text']
-    with SandboxSession(lang=lang_map[lang][1], verbose=False) as session:
-        if libs:
-            response = run_with_timeout(session.setup, 120, desc='Library Setup', libraries=libs)
-        response = run_with_timeout(session.run, 60, code, True, desc='Code Execution', )
+    with st.spinner('Ok, give me a sec...'):
+        with SandboxSession(lang=lang_map[lang][1], verbose=True) as session:
+            if libs:
+                response = run_with_timeout(session.setup, 120, desc='Library Setup', libraries=libs)
+            response = run_with_timeout(session.run, 60, code, True, desc='Code Execution', )
     
-    if response['output']:
-        if response['output'].stdout:
-            st.success(response['output'].stdout)
-        if response['output'].stderr:
-            st.error(response['output'].stderr)
+    if response['output'] and response['output']['stdout']:
+        st.success(response['output']['stdout'])
+            
     if response['error']:
         st.error(response['error'])
-    
-    with open("mem_usage.log", "r") as mem_profile:
-        log = list()
-        peak_memory = 0
-        for line in mem_profile.readlines():
-            timestamp, mem = line.split(" ")
-            peak_memory = max(peak_memory, int(mem))
-            log.append((int(timestamp), int(mem)))
-        
-        start_ts, end_ts = log[0], log[-1]
-        duration = (log[-1][0] - log[0][0]) / 1000000
-        st.write(f"**Execution Time:** :blue[{duration}] ms, **Peak Memory:** :blue[{peak_memory}] kb.")
-        
-        chart_data = pd.DataFrame(log, columns=["timestemp", "memory"])
-        st.area_chart(chart_data, x='timestemp', y='memory')
-        
+    elif response['output']['stderr']:
+        st.error(response['output']['stderr'])
+    else:
+        st.write(f"**Execution Time:** :blue[{response['output']['duration']}] ms, **Peak Memory:** :blue[{response['output']['peak_memory']}] kb, **Integral:** :blue[{response['output']['integral']}] kb*ms")
+        st.area_chart(pd.DataFrame(response['output']['log'], columns=["timestemp", "memory"]), x='timestemp', y='memory')
 
-    
-
+   

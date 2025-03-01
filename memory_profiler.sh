@@ -25,7 +25,7 @@ while kill -0 "$PID" 2>/dev/null; do
     fi
     
     echo "$timestamp_ns $rss_kb" >> "$LOG_FILE"
-    sleep 0.0001
+    sleep 0.00001
 done
 
 # 5. Wait PID finish
